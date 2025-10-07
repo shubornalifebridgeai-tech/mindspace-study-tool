@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpace: AI Learning Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            transition: background-color 0.5s ease; 
+        }
+
+        /* Base Theme Colors */
+        html, html.light {
+             --bg-primary: #f0fdf4;
+             --bg-secondary: #ffffff;
+             --bg-tertiary: #161b22;
+             --text-primary: #0D1117;
+             --text-secondary: #4b5563;
+             --accent-primary: #10b981;
+        }
+        html.dark {
+             --bg-primary: #0D1117;
+             --bg-secondary: #161b22;
+             --bg-tertiary: #21262d;
+             --text-primary: #e5e7eb;
+             --text-secondary: #9ca3af;
+             --accent-primary: #34d399;
+        }
+        
+        body { background-color: var(--bg-primary); }
+        
+        /* Colorful Theme & Background Animation */
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        html.colorful body, body.theme-colorful {
+            background: linear-gradient(-45deg, #1e3a8a, #4f46e5, #be185d, #b91c1c);
+            background-size: 400% 400%;
+            animation: gradient-animation 20s ease infinite;
+        }
+        html.colorful .themed-bg { background-color: rgba(13, 17, 23, 0.7); backdrop-filter: blur(10px); }
+        html.colorful .themed-text { color: #ffffff; }
+        html.colorful .themed-accent-text { color: #f9a8d4; }
+        
+        /* Interactive Button Glow/Sparkle Effect */
+        .glow-on-hover {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .glow-on-hover::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+            transition: transform 0.5s ease, opacity 0.5s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .glow-on-hover:hover::before {
+            transform: translate(-50%, -50%) scale(2.5);
+            opacity: 1;
+        }
+        
+        .glow-on-hover:active {
+            transform: scale(0.97);
+        }
+
+        /* Generating Button Animation */
+        @keyframes rainbow-border-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .generating-animation {
+            position: relative;
+            background-color: #10b981 !important; /* Tailwind emerald-600 */
+            overflow: hidden;
+        }
+        .generating-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(
+                from 180deg at 50% 50%,
+                #ec4899, #f59e0b, #84cc16, #10b981, #3b82f6, #8b5cf6, #ec4899
+            );
+            animation: rainbow-border-spin 2.5s linear infinite;
+        }
+        .generating-animation > * {
+            position: relative; /* Ensure content is above the pseudo-element */
+            z-index: 1;
+        }
+
+        @media print {
+            body {
+                background-color: #ffffff;
+            }
+            header, nav, .no-print {
+                display: none !important;
+            }
+            main {
+                padding: 0 !important;
+            }
+            .printable-area {
+                box-shadow: none !important;
+                border: none !important;
+            }
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.22.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-dropzone": "https://aistudiocdn.com/react-dropzone@^14.3.8"
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.mjs" type="module"></script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
