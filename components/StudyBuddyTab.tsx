@@ -1,25 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { StudyData, ChatMessage } from '../types';
 import { useLocale } from '../context/LocaleContext';
-import { generateStudyBuddyStream } from '../services/geminiService';
+import { generateClarityAiStream } from '../services/geminiService';
 import ErrorModal from './ErrorModal';
 import Tooltip from './Tooltip';
 
-interface StudyBuddyTabProps {
+interface ClarityAiTabProps {
     studyData: StudyData | null;
+    chatHistory: ChatMessage[];
+    setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
-const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
+const ClarityAiTab: React.FC<ClarityAiTabProps> = ({ studyData, chatHistory, setChatHistory }) => {
     const { t } = useLocale();
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [query, setQuery] = useState('');
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Clear chat history whenever the study context changes
+    // Clear chat history whenever the study context changes, unless it was loaded with the note
     useEffect(() => {
-        setChatHistory([]);
+        if (studyData && (!chatHistory || chatHistory.length === 0)) {
+            setChatHistory([]);
+        }
     }, [studyData]);
 
     useEffect(() => {
@@ -31,13 +34,13 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
         if (!query.trim() || !studyData) return;
 
         const newQuestion = query;
-        const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: newQuestion }];
-        setChatHistory(newHistory);
+        const currentHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: newQuestion }];
+        setChatHistory(currentHistory);
         setQuery('');
         setIsLoading(true);
 
         try {
-            const stream = await generateStudyBuddyStream(studyData, chatHistory, newQuestion, t('geminiLocale'));
+            const stream = await generateClarityAiStream(studyData, chatHistory, newQuestion, t('geminiLocale'));
             
             let firstChunk = true;
             for await (const chunk of stream) {
@@ -57,7 +60,7 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
                 }
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : t('errorStudyBuddy'));
+            setError(err instanceof Error ? err.message : t('errorClarityAi'));
              // Revert history if there was an error
             setChatHistory(chatHistory);
         } finally {
@@ -68,9 +71,9 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
     if (!studyData?.summary) {
         return (
             <div className="text-center p-8 bg-white dark:bg-[#161b22] rounded-lg shadow-md">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('studyBuddyTitle')}</h3>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('clarityAiTitle')}</h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                    {t('studyBuddyWelcome')}
+                    {t('clarityAiWelcome')}
                 </p>
             </div>
         );
@@ -79,7 +82,7 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
     return (
         <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-200px)]">
             <div className="p-4 bg-white dark:bg-[#161b22] rounded-t-xl shadow-lg flex justify-between items-center border-b border-gray-200 dark:border-[#30363d]">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{t('studyBuddyTitle')}</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{t('clarityAiTitle')}</h2>
                 <Tooltip text={t('tooltip_clearChat')}>
                     <button
                         onClick={() => setChatHistory([])}
@@ -118,7 +121,7 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder={t('studyBuddyPlaceholder')}
+                        placeholder={t('clarityAiPlaceholder')}
                         disabled={isLoading}
                         className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 dark:border-[#30363d] focus:border-emerald-500 focus:ring-emerald-500 rounded-full shadow-md dark:bg-[#21262d] dark:text-gray-200 text-base transition duration-300"
                     />
@@ -134,4 +137,4 @@ const StudyBuddyTab: React.FC<StudyBuddyTabProps> = ({ studyData }) => {
     );
 };
 
-export default StudyBuddyTab;
+export default ClarityAiTab;

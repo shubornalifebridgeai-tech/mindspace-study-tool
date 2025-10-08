@@ -60,7 +60,7 @@ const MindMapNode: React.FC<MindMapNodeProps> = React.memo(({ node, isSelected, 
             <text
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="fill-gray-900 dark:fill-gray-100 font-semibold text-sm select-none"
+                className={`${node.textColor} font-semibold text-sm select-none transition-colors duration-300`}
                 style={{ pointerEvents: 'none' }}
             >
                 {lines.map((line, i) => (

@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { MindMapNode as MindMapNodeType } from '../types';
 import { useLocale } from '../context/LocaleContext';
-import MindMapNodeComponent from './MindMapNode';
+import MindMapNodeComponent from '../utils/MindMapNode';
 import { createLayout, PositionedNode } from '../utils/mindMapLayout';
 import Tooltip from './Tooltip';
 
@@ -39,7 +38,6 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null); // For focus mode
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-    const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
     
     const isDragging = useRef(false);
     const lastPos = useRef({ x: 0, y: 0 });
@@ -48,12 +46,11 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
     
     // --- Data Processing ---
     const flattenedNodes = useMemo(() => {
-        // The new layout needs the dimensions of the SVG area to work correctly.
-        if (svgDimensions.width > 0 && mindMapData.length > 0) {
-            return createLayout(mindMapData[0], svgDimensions.width, svgDimensions.height);
+        if (mindMapData.length > 0) {
+            return createLayout(mindMapData[0]);
         }
         return [];
-    }, [mindMapData, svgDimensions]);
+    }, [mindMapData]);
     
     const { nodesById, parentMap, childrenMap } = useMemo(() => {
         const nodeMap = new Map<string, PositionedNode>();
@@ -63,13 +60,32 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
         flattenedNodes.forEach(node => {
             nodeMap.set(node.id, node);
              if (node.subConcepts) {
-                const childIds = node.subConcepts.map(child => child.id);
-                childrenMap.set(node.id, childIds);
-                childIds.forEach(childId => {
-                    parentMap.set(childId, node.id);
+                const childIds = flattenedNodes
+                    .filter(n => n.level === node.level + 1 && parentMap.get(n.id) === node.id) // This is inefficient, let's fix
+                    .map(child => child.id);
+                
+                flattenedNodes.forEach(potentialChild => {
+                    const foundParent = flattenedNodes.find(p => p.subConcepts?.some(sc => sc.id === potentialChild.id));
+                    if(foundParent) {
+                        parentMap.set(potentialChild.id, foundParent.id);
+                    }
                 });
+
+                if (node.subConcepts) {
+                    childrenMap.set(node.id, node.subConcepts.map(sc => sc.id));
+                }
             }
         });
+        
+        // A more reliable way to build parentMap
+        const buildParentMap = (node: PositionedNode, parentId: string | null) => {
+             if (parentId) parentMap.set(node.id, parentId);
+             const subs = flattenedNodes.filter(n => node.subConcepts?.some(sc => sc.id === n.id));
+             subs.forEach(child => buildParentMap(child, node.id));
+        }
+        if(flattenedNodes.length > 0) buildParentMap(flattenedNodes.find(n => n.isRoot)!, null);
+
+
         return { nodesById: nodeMap, parentMap, childrenMap };
     }, [flattenedNodes]);
 
@@ -91,29 +107,34 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
     const focusedPathIds = useMemo(() => {
         if (!focusedNodeId) return new Set<string>();
         const path = new Set<string>([focusedNodeId]);
-        const children = childrenMap.get(focusedNodeId) || [];
-        children.forEach(childId => path.add(childId));
+        
+        const getChildrenRecursive = (id: string) => {
+            const children = flattenedNodes.filter(n => parentMap.get(n.id) === id);
+            children.forEach(child => {
+                path.add(child.id);
+                getChildrenRecursive(child.id);
+            });
+        };
+        getChildrenRecursive(focusedNodeId);
+
         return path;
-    }, [focusedNodeId, childrenMap]);
+    }, [focusedNodeId, parentMap, flattenedNodes]);
 
     const connections = useMemo(() => {
         const lines: { key: string, d: string, level: number }[] = [];
         flattenedNodes.forEach(parentNode => {
-            if (parentNode.subConcepts) {
-                parentNode.subConcepts.forEach(subConcept => {
-                    const childNode = nodesById.get(subConcept.id);
-                    if (childNode) {
-                        // Draw a smooth quadratic Bézier curve from parent to child
-                        const controlX = parentNode.x;
-                        const controlY = childNode.y;
-                        const d = `M ${parentNode.x} ${parentNode.y} Q ${controlX} ${controlY} ${childNode.x} ${childNode.y}`;
-                        lines.push({ key: `${parentNode.id}-${childNode.id}`, d, level: parentNode.level });
-                    }
-                });
-            }
+            const children = flattenedNodes.filter(n => parentMap.get(n.id) === parentNode.id);
+            children.forEach(childNode => {
+                 // Use a more organic-looking cubic Bézier curve
+                const p1 = { x: parentNode.x, y: parentNode.y };
+                const p2 = { x: childNode.x, y: childNode.y };
+
+                const d = `M ${p1.x},${p1.y} C ${p1.x},${p1.y + 50} ${p2.x},${p2.y - 50} ${p2.x},${p2.y}`;
+                lines.push({ key: `${parentNode.id}-${childNode.id}`, d, level: parentNode.level });
+            });
         });
         return lines;
-    }, [flattenedNodes, nodesById]);
+    }, [flattenedNodes, parentMap]);
 
     // --- Interaction Handlers ---
     const centerView = useCallback(() => {
@@ -137,29 +158,26 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
         const zoomY = (svgHeight - padding) / treeHeight;
         const newZoom = Math.min(zoomX, zoomY, 1);
 
-        const newX = (svgWidth / 2) - (minX + treeWidth / 2) * newZoom;
-        const newY = (svgHeight / 2) - (minY + treeHeight / 2) * newZoom;
+        const newX = (svgWidth / 2) - ((minX + treeWidth / 2) * newZoom);
+        const newY = (svgHeight / 2) - ((minY + treeHeight / 2) * newZoom) + 50; // Center vertically a bit lower
         
         setView({ x: newX, y: newY, zoom: newZoom });
     }, [flattenedNodes]);
-
+    
+    // Effect to auto-center the view when the layout changes
     useEffect(() => {
-       centerView();
-       setFocusedNodeId(null);
-       if(!selectedNodeId && mindMapData.length > 0) {
-            setSelectedNodeId(mindMapData[0].id);
+       if (flattenedNodes.length > 0) {
+         centerView();
        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mindMapData]); // Center view only when data changes
+    }, [flattenedNodes, centerView]);
 
+    // Effect to select the root node when new data is loaded
     useEffect(() => {
-        const observer = new ResizeObserver(entries => {
-            const { width, height } = entries[0].contentRect;
-            setSvgDimensions({ width, height });
-        });
-        if (svgRef.current) observer.observe(svgRef.current);
-        return () => observer.disconnect();
-    }, []);
+       if (mindMapData.length > 0 && mindMapData[0]?.id) {
+            setSelectedNodeId(mindMapData[0].id);
+            setFocusedNodeId(null);
+       }
+    }, [mindMapData]);
 
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -219,11 +237,11 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
         const { width, height } = svgRef.current.getBoundingClientRect();
         let targetX = width / 2;
         let targetY = height / 2;
-
-        if (selectedNodeId && nodesById.has(selectedNodeId)) {
-            const node = nodesById.get(selectedNodeId)!;
-            targetX = node.x * view.zoom + view.x;
-            targetY = node.y * view.zoom + view.y;
+        
+        const selectedNode = flattenedNodes.find(n => n.id === selectedNodeId);
+        if (selectedNode) {
+            targetX = selectedNode.x * view.zoom + view.x;
+            targetY = selectedNode.y * view.zoom + view.y;
         }
 
         const zoomFactor = 1.2;
@@ -283,33 +301,6 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
         });
         onUpdate(newMindMap);
     }, [mindMapData, onUpdate, t]);
-
-    // --- Virtualization Logic ---
-    const visibleNodes = useMemo(() => {
-        if (!svgDimensions.width) return [];
-        
-        const padding = 100;
-        const visibleRect = {
-            x: (-view.x - padding) / view.zoom,
-            y: (-view.y - padding) / view.zoom,
-            width: (svgDimensions.width + padding * 2) / view.zoom,
-            height: (svgDimensions.height + padding * 2) / view.zoom,
-        };
-
-        return flattenedNodes.filter(node => {
-            const nodeRight = node.x + node.width / 2;
-            const nodeLeft = node.x - node.width / 2;
-            const nodeBottom = node.y + node.height / 2;
-            const nodeTop = node.y - node.height / 2;
-            
-            return (
-                nodeRight > visibleRect.x &&
-                nodeLeft < visibleRect.x + visibleRect.width &&
-                nodeBottom > visibleRect.y &&
-                nodeTop < visibleRect.y + visibleRect.height
-            );
-        });
-    }, [flattenedNodes, view, svgDimensions]);
     
     const isAnyNodeHovered = !!hoveredNodeId;
     const isFocusModeActive = !!focusedNodeId;
@@ -353,7 +344,7 @@ const VisualMindMap: React.FC<VisualMindMapProps> = ({ mindMapData, onUpdate }) 
                         );
                     })}
                      {/* Render all the visible nodes */}
-                    {visibleNodes.map(node => {
+                    {flattenedNodes.map(node => {
                         const isDimmed = isFocusModeActive && !focusedPathIds.has(node.id);
                         return (
                             <MindMapNodeComponent

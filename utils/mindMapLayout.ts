@@ -3,29 +3,50 @@ import type { MindMapNode } from '../types';
 // --- Constants for Layout and Styling ---
 export const NODE_WIDTH = 150;
 export const NODE_BASE_HEIGHT = 50;
+const HORIZONTAL_SPACING = 40;
+const VERTICAL_SPACING = 100;
 
-// Defines Tailwind class strings for node colors, enabling automatic dark mode switching with a "pro" feel.
-export const ROOT_COLOR_CLASSES = 'fill-slate-200 dark:fill-slate-800';
-export const LEVEL_2_PLUS_COLOR_CLASSES = 'fill-slate-100 dark:fill-slate-700';
-export const COLOR_CLASSES = [
-    'fill-yellow-200 dark:fill-yellow-800/60',
-    'fill-sky-200 dark:fill-sky-800/60',
-    'fill-emerald-200 dark:fill-emerald-800/60',
-    'fill-red-200 dark:fill-red-800/60',
-    'fill-violet-200 dark:fill-violet-800/60',
-    'fill-pink-200 dark:fill-pink-800/60',
+// Defines Tailwind class strings for node colors
+export const ROOT_COLOR_CLASSES = 'fill-slate-800 dark:fill-slate-200';
+export const ROOT_TEXT_COLOR_CLASSES = 'fill-white dark:fill-slate-800';
+export const LEVEL_2_PLUS_COLOR_CLASSES = 'fill-slate-50 dark:fill-slate-700';
+export const LEVEL_2_PLUS_TEXT_COLOR_CLASSES = 'fill-slate-700 dark:fill-slate-200';
+export const COLORS = [
+    { fill: 'fill-yellow-200/80 dark:fill-yellow-800/60', text: 'fill-yellow-900 dark:fill-yellow-100' },
+    { fill: 'fill-sky-200/80 dark:fill-sky-800/60', text: 'fill-sky-900 dark:fill-sky-100' },
+    { fill: 'fill-emerald-200/80 dark:fill-emerald-800/60', text: 'fill-emerald-900 dark:fill-emerald-100' },
+    { fill: 'fill-red-200/80 dark:fill-red-800/60', text: 'fill-red-900 dark:fill-red-100' },
+    { fill: 'fill-violet-200/80 dark:fill-violet-800/60', text: 'fill-violet-900 dark:fill-violet-100' },
+    { fill: 'fill-pink-200/80 dark:fill-pink-800/60', text: 'fill-pink-900 dark:fill-pink-100' },
 ];
 
 // --- Type Definitions ---
+// Temporary node structure used during layout calculation
+type LayoutNode = MindMapNode & {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    textColor: string;
+    isRoot: boolean;
+    level: number;
+    modifier: number; // For shifting subtrees
+    children: LayoutNode[];
+    parent?: LayoutNode;
+};
+
 export interface PositionedNode extends MindMapNode {
     x: number;
     y: number;
     width: number;
     height: number;
     color: string;
+    textColor: string;
     isRoot: boolean;
     level: number;
 }
+
 
 // --- Helper Functions ---
 export const wrapText = (text: string, maxWidth: number): string[] => {
@@ -33,8 +54,7 @@ export const wrapText = (text: string, maxWidth: number): string[] => {
     const words = text.split(/\s+/);
     let line = '';
     const lines = [];
-    
-    const averageCharWidth = 8; // Adjusted for font
+    const averageCharWidth = 8;
     const maxCharsPerLine = Math.floor(maxWidth / averageCharWidth);
 
     for (const word of words) {
@@ -51,7 +71,6 @@ export const wrapText = (text: string, maxWidth: number): string[] => {
             line = tempWord;
             continue;
         }
-
         const testLine = line + (line ? ' ' : '') + word;
         if (testLine.length > maxCharsPerLine && line.length > 0) {
             lines.push(line);
@@ -64,77 +83,125 @@ export const wrapText = (text: string, maxWidth: number): string[] => {
     return lines;
 };
 
-// --- New Radial Layout Algorithm ---
+// --- New Hierarchical Tree Layout Algorithm ---
 
-const layoutNode = (
+// Creates the internal tree structure needed for layout calculations.
+function buildLayoutTree(
     node: MindMapNode,
     level: number,
-    startAngle: number,
-    sweepAngle: number,
     colorIndex: number,
-    centerX: number,
-    centerY: number
-): PositionedNode[] => {
+    parent?: LayoutNode
+): LayoutNode {
     const lines = wrapText(node.concept, NODE_WIDTH - 20);
     const height = Math.max(NODE_BASE_HEIGHT, lines.length * 16 + 24);
 
-    let colorClass = '';
+    let colorClass, textColorClass;
     if (level === 0) {
         colorClass = ROOT_COLOR_CLASSES;
+        textColorClass = ROOT_TEXT_COLOR_CLASSES;
     } else if (level >= 2) {
-        colorClass = LEVEL_2_PLUS_COLOR_CLASSES;
+        const parentColorSet = COLORS[parent ? parent.level === 1 ? (parent as any).colorIndex : -1 : -1];
+        colorClass = parentColorSet ? LEVEL_2_PLUS_COLOR_CLASSES : LEVEL_2_PLUS_COLOR_CLASSES; // Fallback
+        textColorClass = parentColorSet ? LEVEL_2_PLUS_TEXT_COLOR_CLASSES : LEVEL_2_PLUS_TEXT_COLOR_CLASSES;
     } else {
-        colorClass = COLOR_CLASSES[colorIndex % COLOR_CLASSES.length];
+        const colorSet = COLORS[colorIndex % COLORS.length];
+        colorClass = colorSet.fill;
+        textColorClass = colorSet.text;
     }
-    
-    const positionedNode: PositionedNode = {
+
+    const layoutNode: LayoutNode = {
         ...node,
-        x: centerX,
-        y: centerY,
-        width: NODE_WIDTH,
-        height: height,
-        color: colorClass,
-        isRoot: level === 0,
-        level: level,
+        x: 0, y: level * VERTICAL_SPACING,
+        width: NODE_WIDTH, height: height,
+        color: colorClass, textColor: textColorClass,
+        isRoot: level === 0, level: level,
+        modifier: 0, parent: parent,
+        children: [],
+        ...(level === 1 && { colorIndex }),
     };
-    
-    const results: PositionedNode[] = [positionedNode];
-    const children = node.subConcepts || [];
-    const childCount = children.length;
-    
-    if (childCount === 0) {
-        return results;
+
+    if (node.subConcepts) {
+        layoutNode.children = node.subConcepts.map((child, i) =>
+            buildLayoutTree(child, level + 1, i, layoutNode)
+        );
     }
-    
-    const radius = level === 0 
-        ? Math.max(NODE_WIDTH, 200) 
-        : Math.max(NODE_WIDTH, 160);
-    
-    const angleStep = sweepAngle / childCount;
-    
-    children.forEach((child, index) => {
-        const angle = startAngle + (index + 0.5) * angleStep;
-        const childX = centerX + radius * Math.cos(angle);
-        const childY = centerY + radius * Math.sin(angle);
-        
-        // Give each child a fraction of the parent's sweep angle
-        const childSweepAngle = angleStep * 0.8; 
-        const childStartAngle = angle - childSweepAngle / 2;
-        
-        results.push(...layoutNode(child, level + 1, childStartAngle, childSweepAngle, colorIndex, childX, childY));
-    });
-
-    return results;
-};
+    return layoutNode;
+}
 
 
-// Main layout function that orchestrates the radial layout.
-export const createLayout = (rootData: MindMapNode | undefined, viewWidth: number, viewHeight: number): PositionedNode[] => {
+// First pass: a post-order traversal to calculate initial positions and modifiers.
+function firstPass(node: LayoutNode) {
+    node.children.forEach(firstPass);
+    if (node.children.length > 0) {
+        // Center parent over children
+        const childrenWidth = node.children[node.children.length - 1].x - node.children[0].x;
+        node.x = node.children[0].x + childrenWidth / 2;
+    }
+
+    if (node.parent && node !== node.parent.children[0]) {
+        const previousSibling = node.parent.children[node.parent.children.indexOf(node) - 1];
+        const requiredSpacing = (previousSibling.width + node.width) / 2 + HORIZONTAL_SPACING;
+        const currentSpacing = node.x - previousSibling.x;
+        if (currentSpacing < requiredSpacing) {
+            const shift = requiredSpacing - currentSpacing;
+            node.x += shift;
+            node.modifier += shift;
+        }
+    }
+}
+
+// Second pass: a pre-order traversal to apply modifiers and calculate final positions.
+function secondPass(node: LayoutNode, modSum = 0) {
+    node.x += modSum;
+    node.children.forEach(child => secondPass(child, modSum + node.modifier));
+}
+
+
+export const createLayout = (rootData: MindMapNode | undefined): PositionedNode[] => {
     if (!rootData) return [];
+
+    const layoutRoot = buildLayoutTree(rootData, 0, 0);
+
+    firstPass(layoutRoot);
     
-    const centerX = 0;
-    const centerY = 0;
+    // Center the tree
+    const extents = getTreeExtents(layoutRoot);
+    const shiftX = -extents.min;
+    layoutRoot.x += shiftX;
+    layoutRoot.modifier += shiftX;
     
-    // The root node gets a full 360-degree sweep angle for its children.
-    return layoutNode(rootData, 0, -Math.PI / 2, 2 * Math.PI, 0, centerX, centerY);
+    secondPass(layoutRoot);
+
+    const flattenedNodes: PositionedNode[] = [];
+    const queue = [layoutRoot];
+    while (queue.length > 0) {
+        const node = queue.shift()!;
+        flattenedNodes.push({
+            id: node.id,
+            concept: node.concept,
+            subConcepts: node.subConcepts,
+            x: node.x,
+            y: node.y,
+            width: node.width,
+            height: node.height,
+            color: node.color,
+            textColor: node.textColor,
+            isRoot: node.isRoot,
+            level: node.level,
+        });
+        queue.push(...node.children);
+    }
+    return flattenedNodes;
 };
+
+// Helper to find the horizontal boundaries of the tree for centering.
+function getTreeExtents(node: LayoutNode): { min: number, max: number } {
+    let min = node.x - node.width / 2;
+    let max = node.x + node.width / 2;
+    node.children.forEach(child => {
+        const childExtents = getTreeExtents(child);
+        min = Math.min(min, childExtents.min);
+        max = Math.max(max, childExtents.max);
+    });
+    return { min, max };
+}

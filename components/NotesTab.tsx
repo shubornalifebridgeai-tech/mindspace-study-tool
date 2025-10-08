@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { StudyData, ChatMessage, MindMapNode } from '../types';
 import VisualMindMap from './VisualMindMap';
 import MindMapOutline from './MindMapOutline';
@@ -16,9 +16,10 @@ interface NotesTabProps {
     chatHistory: ChatMessage[];
     isChatLoading: boolean;
     onMindMapChange: (newMindMapData: MindMapNode[]) => void;
+    highlightedSentences: string[];
 }
 
-const NotesTab: React.FC<NotesTabProps> = ({ studyData, onSave, onShare, setNotification, onFollowUp, chatHistory, isChatLoading, onMindMapChange }) => {
+const NotesTab: React.FC<NotesTabProps> = ({ studyData, onSave, onShare, setNotification, onFollowUp, chatHistory, isChatLoading, onMindMapChange, highlightedSentences }) => {
     const { t } = useLocale();
     const [followUpQuery, setFollowUpQuery] = useState('');
     const [mindMapView, setMindMapView] = useState<'visual' | 'outline'>('visual');
@@ -27,6 +28,43 @@ const NotesTab: React.FC<NotesTabProps> = ({ studyData, onSave, onShare, setNoti
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatHistory, isChatLoading]);
+
+    const highlightedSummaryContent = useMemo(() => {
+        if (!studyData?.summary) return null;
+        const summary = studyData.summary;
+        const highlights = highlightedSentences;
+
+        if (!highlights || highlights.length === 0) {
+            return <>{summary}</>;
+        }
+
+        const escapeRegExp = (string: string) => {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        };
+
+        const sanitizedHighlights = highlights.filter(h => h && h.trim() !== '');
+        if (sanitizedHighlights.length === 0) {
+          return <>{summary}</>;
+        }
+
+        const regex = new RegExp(`(${sanitizedHighlights.map(escapeRegExp).join('|')})`, 'g');
+        const parts = summary.split(regex);
+
+        return (
+            <>
+                {parts.map((part, index) => {
+                    const isHighlight = sanitizedHighlights.includes(part);
+                    return isHighlight ? (
+                        <mark key={index} className="bg-yellow-300 dark:bg-yellow-600/70 rounded px-1 py-0.5 transition-all duration-300 ease-in-out">
+                            {part}
+                        </mark>
+                    ) : (
+                        <React.Fragment key={index}>{part}</React.Fragment>
+                    );
+                })}
+            </>
+        );
+    }, [studyData?.summary, highlightedSentences]);
 
     const handleCopyShareLink = () => {
         if (!studyData) return;
@@ -69,7 +107,7 @@ const NotesTab: React.FC<NotesTabProps> = ({ studyData, onSave, onShare, setNoti
                     <div>
                         <h3 className="text-2xl font-bold mb-3 text-gray-800 dark:text-gray-200">{t('summaryTitle')}</h3>
                         <div className="p-4 border border-gray-300 dark:border-[#30363d] rounded-lg bg-gray-50 dark:bg-[#21262d] text-gray-700 dark:text-gray-200 whitespace-pre-wrap printable-area">
-                            {studyData.summary}
+                            {highlightedSummaryContent}
                         </div>
                         {studyData.keyInsight && (
                              <div className="mt-4 p-4 border dark:border-yellow-500/20 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-gray-700 dark:text-yellow-200 italic printable-area">

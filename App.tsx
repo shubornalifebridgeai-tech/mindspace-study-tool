@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { generateStudyTools, generateFollowUpAnswer } from './services/geminiService';
 import type { StudyData, SavedNote, Tab, GenerationOptions, ChatMessage, User, MindMapNode } from './types';
@@ -12,7 +13,7 @@ import InputTab from './components/InputTab';
 import NotesTab from './components/NotesTab';
 import FlashcardsTab from './components/FlashcardsTab';
 import QuizzesTab from './components/QuizzesTab';
-import StudyBuddyTab from './components/StudyBuddyTab'; // New
+import ClarityAiTab from './components/StudyBuddyTab';
 import Tooltip from './components/Tooltip';
 import ConfirmModal from './components/ConfirmModal';
 import ErrorModal from './components/ErrorModal';
@@ -102,9 +103,15 @@ const App: React.FC = () => {
     const [notification, setNotification] = useState<string | null>(null);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
     
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    // State for Notes Tab follow-up chat
+    const [notesFollowUpHistory, setNotesFollowUpHistory] = useState<ChatMessage[]>([]);
+    const [isNotesChatLoading, setIsNotesChatLoading] = useState<boolean>(false);
+    
+    // State for Clarity AI Tab chat
+    const [clarityAiHistory, setClarityAiHistory] = useState<ChatMessage[]>([]);
+    
     const [originalContext, setOriginalContext] = useState<string>('');
+    const [highlightedSentences, setHighlightedSentences] = useState<string[]>([]);
 
     useEffect(() => {
         try {
@@ -150,7 +157,8 @@ const App: React.FC = () => {
                 const jsonString = decodeURIComponent(atob(encodedData));
                 const sharedData: StudyData = JSON.parse(jsonString);
                 setStudyData(sharedData);
-                setChatHistory([]);
+                setNotesFollowUpHistory([]);
+                setClarityAiHistory([]);
                 setActiveTab(TABS[2]);
                 setCurrentView('study');
                 window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -212,7 +220,9 @@ const App: React.FC = () => {
         setIsLoading(true);
         setError(null);
         setStudyData(null);
-        setChatHistory([]);
+        setNotesFollowUpHistory([]);
+        setClarityAiHistory([]);
+        setHighlightedSentences([]);
         setOriginalContext(inputText);
 
         try {
@@ -221,6 +231,9 @@ const App: React.FC = () => {
                 result.mindMap = addIdsToMindMapNodes(result.mindMap);
             }
             setStudyData(result);
+            if (result.summary) {
+                setOriginalContext(result.summary);
+            }
             setActiveTab(TABS.find(tab => tab.id === 'notes')!);
         } catch (err) {
             console.error(err);
@@ -233,19 +246,21 @@ const App: React.FC = () => {
     const handleFollowUp = async (question: string) => {
         if (!question.trim()) return;
 
-        const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: question }];
-        setChatHistory(newHistory);
-        setIsChatLoading(true);
+        setHighlightedSentences([]);
+        const newHistory: ChatMessage[] = [...notesFollowUpHistory, { role: 'user', content: question }];
+        setNotesFollowUpHistory(newHistory);
+        setIsNotesChatLoading(true);
 
         try {
-            const answer = await generateFollowUpAnswer(originalContext, newHistory, t('geminiLocale'));
-            setChatHistory(prev => [...prev, { role: 'model', content: answer }]);
+            const { answer, relevantSentences } = await generateFollowUpAnswer(originalContext, newHistory, t('geminiLocale'));
+            setNotesFollowUpHistory(prev => [...prev, { role: 'model', content: answer }]);
+            setHighlightedSentences(relevantSentences);
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : t('errorGeneration'));
-            setChatHistory(chatHistory);
+            setNotesFollowUpHistory(notesFollowUpHistory);
         } finally {
-            setIsChatLoading(false);
+            setIsNotesChatLoading(false);
         }
     };
 
@@ -261,6 +276,7 @@ const App: React.FC = () => {
             title: title,
             createdAt: new Date().toISOString(),
             data: studyData,
+            chatHistory: clarityAiHistory,
         };
 
         setSavedNotes(prevNotes => {
@@ -270,7 +286,7 @@ const App: React.FC = () => {
         });
 
         setNotification(t('notificationNoteSaved'));
-    }, [studyData, t]);
+    }, [studyData, t, clarityAiHistory]);
 
     const handleShareNote = useCallback(async () => {
         if (!studyData?.summary) return;
@@ -300,7 +316,12 @@ const App: React.FC = () => {
                 dataWithIds.mindMap = addIdsToMindMapNodes(dataWithIds.mindMap as any);
             }
             setStudyData(dataWithIds);
-            setChatHistory([]);
+            if (dataWithIds.summary) {
+                setOriginalContext(dataWithIds.summary);
+            }
+            setNotesFollowUpHistory([]);
+            setClarityAiHistory(noteToLoad.chatHistory || []);
+            setHighlightedSentences([]);
             setActiveTab(TABS.find(tab => tab.id === 'notes')!);
             setCurrentView('study');
             setNotification(t('notificationNoteLoaded'));
@@ -336,10 +357,10 @@ const App: React.FC = () => {
         switch (activeTab.id) {
             case 'help': return <HelpTab />;
             case 'input': return <InputTab onGenerate={handleGenerate} isLoading={isLoading} onError={setError} />;
-            case 'notes': return <NotesTab studyData={studyData} onSave={handleSaveNote} onShare={handleShareNote} setNotification={setNotification} onFollowUp={handleFollowUp} chatHistory={chatHistory} isChatLoading={isChatLoading} onMindMapChange={handleMindMapChange} />;
+            case 'notes': return <NotesTab studyData={studyData} onSave={handleSaveNote} onShare={handleShareNote} setNotification={setNotification} onFollowUp={handleFollowUp} chatHistory={notesFollowUpHistory} isChatLoading={isNotesChatLoading} onMindMapChange={handleMindMapChange} highlightedSentences={highlightedSentences} />;
             case 'flashcards': return <FlashcardsTab flashcards={studyData?.flashcards} />;
             case 'quizzes': return <QuizzesTab studyData={studyData} />;
-            case 'studyBuddy': return <StudyBuddyTab studyData={studyData} />;
+            case 'clarityAi': return <ClarityAiTab studyData={studyData} chatHistory={clarityAiHistory} setChatHistory={setClarityAiHistory} />;
             case 'saved': return <SavedTab notes={savedNotes} onLoad={handleLoadNote} onDelete={handleDeleteNote} />;
             default: return <HelpTab />;
         }

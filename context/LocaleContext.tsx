@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { translations, TranslationKey } from '../translations';
+import { translations, TranslationKey } from '../utils/translations';
 
 type ValidLocale = keyof typeof translations;
 

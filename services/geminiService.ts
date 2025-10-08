@@ -186,8 +186,34 @@ export const extractTextFromImage = async (imageData: {data: string, mimeType: s
     }
 };
 
-export const generateFollowUpAnswer = async (context: string, history: ChatMessage[], locale: string = 'English'): Promise<string> => {
-    const systemInstruction = `You are a helpful study assistant. Your goal is to answer questions based on the original text provided and the conversation history. Keep your answers concise and directly related to the study material. Answer in ${locale}.`;
+export const generateFollowUpAnswer = async (
+    context: string, 
+    history: ChatMessage[], 
+    locale: string = 'English'
+): Promise<{ answer: string; relevantSentences: string[] }> => {
+    const systemInstruction = `You are a helpful study assistant. Your goal is to answer questions based on the original text provided.
+1.  Provide a concise answer to the user's question.
+2.  Identify and extract the specific sentences from the original study material that directly support your answer.
+3.  Return a JSON object containing your answer and the list of exact, verbatim sentences.
+4.  Answer in ${locale}. The entire JSON response, including keys and values, must be in ${locale}.`;
+
+    const followUpSchema = {
+        type: Type.OBJECT,
+        properties: {
+            answer: {
+                type: Type.STRING,
+                description: "A concise answer to the user's question.",
+            },
+            relevantSentences: {
+                type: Type.ARRAY,
+                description: "An array of exact, verbatim sentences from the original text that support the answer.",
+                items: {
+                    type: Type.STRING,
+                },
+            },
+        },
+        required: ['answer', 'relevantSentences'],
+    };
 
     const contents = [
         { role: 'user', parts: [{ text: `Here is the original study material:\n\n${context}` }] },
@@ -202,30 +228,45 @@ export const generateFollowUpAnswer = async (context: string, history: ChatMessa
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: contents,
-             config: {
+            config: {
                 systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: followUpSchema,
             },
         });
-        return response.text.trim();
+        
+        const jsonText = response.text.trim();
+        const parsedData = JSON.parse(jsonText);
+
+        return {
+            answer: parsedData.answer || "I couldn't find a specific answer.",
+            relevantSentences: parsedData.relevantSentences || [],
+        };
     } catch (error) {
          console.error("Error generating follow-up answer:", error);
         throw new Error("I had trouble answering that question. Please try rephrasing it.");
     }
 };
 
-export const generateStudyBuddyStream = async (
+export const generateClarityAiStream = async (
     studyData: StudyData,
     history: ChatMessage[],
     question: string,
     locale: string = 'English'
 ) => {
-    const systemInstruction = `You are "Sparky", a fun, encouraging, and quirky AI study buddy. You love using emojis ✨. Your goal is to help the user understand their study material, brainstorm new ideas, and stay motivated. Keep your answers conversational and positive. Base your knowledge on the provided study material. Answer in ${locale}.`;
+    const context = `
+CONTEXT:
+---
+Summary: ${studyData.summary || 'Not available.'}
+Key Insight: ${studyData.keyInsight || 'Not available.'}
+---
+`.trim();
 
-    const context = `Here is the study material context:\n\n${studyData.summary}\n\nKey Insight: ${studyData.keyInsight}`;
+    const systemInstruction = `You are Clarity AI, an advanced study assistant. Your primary goal is to provide clear, accurate, and concise explanations based *only* on the provided study material in the CONTEXT section. Avoid making assumptions or providing information outside the given context. Help the user understand their notes deeply and accurately. Answer in ${locale}.
+
+${context}`;
 
     const contents = [
-        { role: 'user', parts: [{ text: context }] },
-        { role: 'model', parts: [{ text: `Got it! I'm Sparky, your study buddy! What's on your mind? 🚀` }] },
         ...history.map(msg => ({
             role: msg.role,
             parts: [{ text: msg.content }]
@@ -243,7 +284,7 @@ export const generateStudyBuddyStream = async (
         });
         return response;
     } catch (error) {
-        console.error("Error generating study buddy response:", error);
-        throw new Error("Failed to get response from Study Buddy.");
+        console.error("Error generating Clarity AI response:", error);
+        throw new Error("Failed to get response from Clarity AI.");
     }
 };

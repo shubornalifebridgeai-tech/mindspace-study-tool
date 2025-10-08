@@ -1,4 +1,4 @@
-import { translations } from './translations';
+import { translations } from './utils/translations';
 
 export type TranslationKey = keyof typeof translations.en;
 
@@ -32,10 +32,11 @@ export interface SavedNote {
   title: string;
   createdAt: string; 
   data: StudyData;
+  chatHistory?: ChatMessage[];
 }
 
 export interface Tab {
-    id: 'help' | 'input' | 'notes' | 'flashcards' | 'quizzes' | 'studyBuddy' | 'saved';
+    id: 'help' | 'input' | 'notes' | 'flashcards' | 'quizzes' | 'clarityAi' | 'saved';
     labelKey: TranslationKey;
     tooltipKey: TranslationKey;
 }
