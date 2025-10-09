@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-const API_KEY = "AIzaSyCCCTeHbdkehdhdejshs2REdw"; // এখানে তোমার পুরো API কী পেস্ট করো (Google AI Studio থেকে নাও)
+const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw"
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
