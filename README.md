@@ -1,57 +1,20 @@
- <div align="center">
-  <img width="200" height="75" alt="Banner" src="https://via.placeholder.com/200x75/4CAF50/white?text=Study+Sparkz"> <!-- ব্যানার ইমেজ যোগ করুন -->
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Study Sparkz
+# Run and deploy your AI Studio app
 
-**AI-Powered Study Tool**: Generate flashcards, quizzes, and visual aids using Google Gemini API. Perfect for students! 🚀
+This contains everything you need to run your app locally.
 
-[![Stars](https://img.shields.io/github/stars/shuborna-bridge-tech/study-sparkz)](https://github.com/shuborna-bridge-tech/study-sparkz)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+View your app in AI Studio: https://ai.studio/apps/drive/1xOdjiOY-rPfvcpbJWzK6k_bWUsgfP-vO
 
-## 🌟 Features
-- Flashcard Generator
-- Quiz Creator
-- Visual Aids (Mind Maps)
-- Responsive UI (Vite + TS)
+## Run Locally
 
-## 🎯 Quick Start (Local Run)
-### Prerequisites
-- Node.js v18+: [Download](https://nodejs.org/)
-- Gemini API Key: [Get Here](https://aistudio.google.com/app/apikey)
+**Prerequisites:**  Node.js
 
-### Steps
-1. Clone: `git clone https://github.com/shuborna-bridge-tech/study-sparkz.git && cd study-sparkz`
-2. Install: `npm install`
-3. Env: Create `.env.local` with `VITE_GEMINI_API_KEY=your_key`
-4. Run: `npm run dev` → http://localhost:5173
 
-## 🚀 Deploy to GitHub Pages
-1. Set secret `VITE_GEMINI_API_KEY` in Settings > Secrets > Actions.
-2. Push to main → Auto-deploys!
-3. Live: https://shuborna-bridge-tech.github.io/study-sparkz
-
-View in AI Studio: https://aistudio.google.com/app/apps/drive/1x... (আপনার লিংক)
-
-## 📱 Usage
-1. Enter topic (e.g., "Python Basics").
-2. Choose mode: Flashcards/Quiz/Visual.
-3. Generate → Export!
-
-![Demo](https://via.placeholder.com/800x400?text=Demo+Screenshot) <!-- স্ক্রিনশট যোগ করুন -->
-
-## 🛠️ Tech
-- Vite, TypeScript, React
-- Google Gemini API
-- GitHub Actions + Pages
-
-## 🤝 Contribute
-Fork → Branch → PR. See CONTRIBUTING.md.
-
-## 📄 License
-MIT - See [LICENSE](LICENSE).
-
-## 👨‍💻 Author
-[Shuborna](https://github.com/shuborna-bridge-tech)
-
-⭐ Star if helpful! 😊
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
