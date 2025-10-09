@@ -1,10 +1,32 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { StudyData, GenerationOptions, ChatMessage, QuizQuestion } from '../types';
+// ---------------- API KEY ----------------
+const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw"; // 
 
-if (!process.env.API_KEY) {
-  console.warn("API key is not set. Please add your Gemini API key in your environment settings.");
+// ---------------- IMPORT ----------------
+import { GoogleGenAI } from "@google/genai";
+
+// ---------------- AI CLIENT ----------------
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+// ---------------- TEXT GENERATION ----------------
+async function generateText(prompt: string) {
+  try {
+    const response = await ai.generateText({
+      model: "gemini-1",
+      prompt: prompt,
+      maxOutputTokens: 100
+    });
+
+    console.log("Generated text:\n");
+    console.log(response.output[0].content[0].text);
+  } catch (error) {
+    console.error("Error generating text:", error);
+  }
 }
 
+// ---------------- RUN EXAMPLE ----------------
+generateText("Write a short motivational message for students.");
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const studyToolSchemaProperties = {
