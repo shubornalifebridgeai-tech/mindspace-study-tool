@@ -1,28 +1,48 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import type { StudyData, GenerationOptions, ChatMessage, QuizQuestion } from '../types';
- 
-const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw"; //
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-import { GoogleGenAI } from "@google/genai";
+const API_KEY = "AIzaSyCCCTeHbdkehdhdejshs2REdw"; // এখানে তোমার পুরো API কী পেস্ট করো (Google AI Studio থেকে নাও)
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const genAI = new GoogleGenerativeAI(API_KEY);
 
-ai.generateText({ model: "gemini-1", prompt: "Write a short motivational message for students.", maxOutputTokens: 100 })
-  .then(res => console.log("Generated text:\n", res.output[0].content[0].text))
-  .catch(err => console.error("Error:", err));
+document.addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('generateBtn');
+    const input = document.getElementById('textInput');
+    const output = document.getElementById('output');
 
-    console.log("Generated text:\n");
-    console.log(response.output[0].content[0].text);
-  } catch (error) {
-    console.error("Error generating text:", error)
-    
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    button.addEventListener('click', async () => {
+        const text = input.value.trim();
+        if (!text) {
+            output.innerHTML = '<p class="error">টেক্সট ইনপুট দাও!</p>';
+            return;
+        }
 
-const studyToolSchemaProperties = {
-    summary: {
-        type: Type.STRING,
-        description: "A concise, well-written summary of the provided text, capturing the main points in a single paragraph.",
-    },
+        if (!API_KEY || API_KEY.includes('AIzaSyCCCTeHbdkehdhdejshs2REdw')) {
+            output.innerHTML = '<p class="error">API কী সেট করো! Google AI Studio থেকে নতুন কী জেনারেট করো।</p>';
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'জেনারেটিং...';
+        output.innerHTML = '<p class="loading">সামারি তৈরি হচ্ছে... দয়া করে অপেক্ষা করো।</p>';
+
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const prompt = `নিচের টেক্সটের একটা সংক্ষিপ্ত, ভালোভাবে লেখা সামারি লেখো (একটা প্যারাগ্রাফে): ${text}`;
+            
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const summary = response.text();
+
+            output.innerHTML = `<h3>সামারি:</h3><p>${summary}</p>`;
+        } catch (error) {
+            console.error("Error:", error);
+            output.innerHTML = `<p class="error">সমস্যা হয়েছে: ${error.message}. API কী বা ইন্টারনেট চেক করো।</p>`;
+        } finally {
+            button.disabled = false;
+            button.textContent = 'সামারি জেনারেট করো';
+        }
+    });
+});
     keyInsight: {
         type: Type.STRING,
         description: "The single most important or surprising takeaway from the text. A one-sentence insight.",
