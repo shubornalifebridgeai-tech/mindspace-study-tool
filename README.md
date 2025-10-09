@@ -1,2 +1,2 @@
- GEMINI_API_KEY =AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw
- 
+hello 🤗
+ everyone 
