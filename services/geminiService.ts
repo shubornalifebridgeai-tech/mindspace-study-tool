@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw"
+const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -13,11 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = input.value.trim();
         if (!text) {
             output.innerHTML = '<p class="error">টেক্সট ইনপুট দাও!</p>';
-            return;
-        }
-
-        if (!API_KEY || API_KEY.includes('AIzaSyCCCTeHbdkehdhdejshs2REdw')) {
-            output.innerHTML = '<p class="error">API কী সেট করো! Google AI Studio থেকে নতুন কী জেনারেট করো।</p>';
             return;
         }
 
@@ -40,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             button.disabled = false;
             button.textContent = 'সামারি জেনারেট করো';
+        }
+    });
+});;
         }
     });
 });
