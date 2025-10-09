@@ -1,6 +1,6 @@
- import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+  import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw";
+const API_KEY = "AIzaSyCCCTeHIM0TueBToy6SRkcGrpA35j2REdw;
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -12,33 +12,31 @@ document.addEventListener('DOMContentLoaded', () => {
     button.addEventListener('click', async () => {
         const text = input.value.trim();
         if (!text) {
-            output.innerHTML = '<p class="error">টেক্সট ইনপুট দাও!</p>';
+            output.innerHTML = '<p class="error">Provide text input!</p>';
             return;
         }
 
         button.disabled = true;
-        button.textContent = 'জেনারেটিং...';
-        output.innerHTML = '<p class="loading">সামারি তৈরি হচ্ছে... দয়া করে অপেক্ষা করো।</p>';
+        button.textContent = 'Generating...';
+        output.innerHTML = '<p class="loading">Creating summary... Please wait.</p>';
 
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const prompt = `নিচের টেক্সটের একটা সংক্ষিপ্ত, ভালোভাবে লেখা সামারি লেখো (একটা প্যারাগ্রাফে): ${text}`;
+            const prompt = `Write a concise, well-written summary of the following text (in one paragraph): ${text}`;
             
             const result = await model.generateContent(prompt);
             const response = await result.response;
             const summary = response.text();
 
-            output.innerHTML = `<h3>সামারি:</h3><p>${summary}</p>`;
+            output.innerHTML = `<h3>Summary:</h3><p>${summary}</p>`;
         } catch (error) {
             console.error("Error:", error);
-            output.innerHTML = `<p class="error">সমস্যা হয়েছে: ${error.message}. API কী বা ইন্টারনেট চেক করো।</p>`;
+            output.innerHTML = `<p class="error">Error occurred: ${error.message}. Check API key or internet.</p>`;
         } finally {
             button.disabled = false;
-            button.textContent = 'সামারি জেনারেট করো';
+            button.textContent = 'Generate Summary';
         }
     });
-});;
-        }
     });
 });
     keyInsight: {
