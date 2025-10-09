@@ -17,6 +17,25 @@ export interface MindMapNode {
   id: string;
   concept: string;
   subConcepts?: MindMapNode[];
+  // --- New Customization Properties ---
+  color?: string; // e.g., 'fill-red-200/80 dark:fill-red-800/60'
+  textColor?: string; // e.g., 'fill-red-900 dark:fill-red-100'
+  isBold?: boolean;
+  isItalic?: boolean;
+  x?: number; // Manual x position override
+  y?: number; // Manual y position override
+}
+
+// FIX: Define and export PositionedNode to make it available globally. This resolves the import error in MindMapNode.tsx.
+export interface PositionedNode extends MindMapNode {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    textColor: string;
+    isRoot: boolean;
+    level: number;
 }
 
 export interface StudyData {
@@ -36,7 +55,7 @@ export interface SavedNote {
 }
 
 export interface Tab {
-    id: 'help' | 'input' | 'notes' | 'flashcards' | 'quizzes' | 'clarityAi' | 'saved';
+    id: 'help' | 'input' | 'notes' | 'flashcards' | 'quizzes' | 'studyStreak' | 'clarityAi' | 'saved';
     labelKey: TranslationKey;
     tooltipKey: TranslationKey;
 }
@@ -56,4 +75,11 @@ export interface User {
     name: string;
     email: string;
     picture: string;
+}
+
+export interface StudyStreakData {
+    currentStreak: number;
+    longestStreak: number;
+    lastStudyDate: string | null; // YYYY-MM-DD
+    studyDays: string[]; // Array of YYYY-MM-DD
 }

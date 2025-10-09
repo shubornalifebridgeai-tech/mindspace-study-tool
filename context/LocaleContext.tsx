@@ -6,7 +6,8 @@ type ValidLocale = keyof typeof translations;
 interface LocaleContextType {
     locale: string;
     setLocale: (locale: string) => void;
-    t: (key: TranslationKey) => string;
+    // FIX: Updated the function signature to accept an optional 'replacements' object for dynamic values in translations.
+    t: (key: TranslationKey, replacements?: { [key: string]: string | number }) => string;
 }
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
@@ -27,13 +28,22 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setLocaleState(newLocale);
     };
 
-    const t = (key: TranslationKey): string => {
+    // FIX: Updated the implementation of the translation function to handle placeholder replacements (e.g., "{score}").
+    const t = (key: TranslationKey, replacements?: { [key: string]: string | number }): string => {
         const lang = locale as ValidLocale;
-        if (translations[lang] && translations[lang][key]) {
-            return translations[lang][key];
+        let translation = (translations[lang] && translations[lang][key])
+            ? translations[lang][key]
+            // Fallback to English if the key is not found in the current language
+            : translations.en[key] || key;
+        
+        if (replacements) {
+            Object.keys(replacements).forEach(placeholder => {
+                const regex = new RegExp(`\\{${placeholder}\\}`, 'g');
+                translation = translation.replace(regex, String(replacements[placeholder]));
+            });
         }
-        // Fallback to English if the key is not found in the current language
-        return translations.en[key] || key;
+
+        return translation;
     };
 
     return (

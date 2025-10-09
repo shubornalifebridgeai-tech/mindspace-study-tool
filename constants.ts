@@ -6,6 +6,7 @@ export const TABS: Tab[] = [
     { id: 'notes', labelKey: 'tab_notes', tooltipKey: 'tooltip_tab_notes' },
     { id: 'flashcards', labelKey: 'tab_flashcards', tooltipKey: 'tooltip_tab_flashcards' },
     { id: 'quizzes', labelKey: 'tab_quizzes', tooltipKey: 'tooltip_tab_quizzes' },
+    { id: 'studyStreak', labelKey: 'tab_studyStreak', tooltipKey: 'tooltip_tab_studyStreak' },
     { id: 'clarityAi', labelKey: 'tab_clarityAi', tooltipKey: 'tooltip_tab_clarityAi' },
     { id: 'saved', labelKey: 'tab_saved', tooltipKey: 'tooltip_tab_saved' },
 ];

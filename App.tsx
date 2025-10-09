@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { generateStudyTools, generateFollowUpAnswer } from './services/geminiService';
-import type { StudyData, SavedNote, Tab, GenerationOptions, ChatMessage, User, MindMapNode } from './types';
+import type { StudyData, SavedNote, Tab, GenerationOptions, ChatMessage, User, MindMapNode, StudyStreakData } from './types';
 import { TABS } from './constants';
 import { useLocale } from './context/LocaleContext';
 
@@ -13,6 +11,7 @@ import InputTab from './components/InputTab';
 import NotesTab from './components/NotesTab';
 import FlashcardsTab from './components/FlashcardsTab';
 import QuizzesTab from './components/QuizzesTab';
+import StudyStreakTab from './components/StudyStreakTab';
 import ClarityAiTab from './components/StudyBuddyTab';
 import Tooltip from './components/Tooltip';
 import ConfirmModal from './components/ConfirmModal';
@@ -30,6 +29,18 @@ const addIdsToMindMapNodes = (nodes: Omit<MindMapNode, 'id'>[]): MindMapNode[] =
         subConcepts: node.subConcepts ? addIdsToMindMapNodes(node.subConcepts) : [],
     }));
 };
+
+// --- Date Helper Functions ---
+const toYYYYMMDD = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+};
+
+const getYesterdayYYYYMMDD = (date: Date): string => {
+    const yesterday = new Date(date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return toYYYYMMDD(yesterday);
+};
+
 
 interface SavedTabProps {
     notes: SavedNote[];
@@ -110,12 +121,20 @@ const App: React.FC = () => {
     // State for Clarity AI Tab chat
     const [clarityAiHistory, setClarityAiHistory] = useState<ChatMessage[]>([]);
     
+    // State for Study Streak
+    const [studyStreakData, setStudyStreakData] = useState<StudyStreakData>({
+        currentStreak: 0,
+        longestStreak: 0,
+        lastStudyDate: null,
+        studyDays: [],
+    });
+
     const [originalContext, setOriginalContext] = useState<string>('');
     const [highlightedSentences, setHighlightedSentences] = useState<string[]>([]);
 
     useEffect(() => {
         try {
-            const storedUser = localStorage.getItem('mindSpaceUser');
+            const storedUser = localStorage.getItem('studySparkUser');
             if (storedUser) {
                 setUser(JSON.parse(storedUser));
             }
@@ -143,10 +162,13 @@ const App: React.FC = () => {
 
     useEffect(() => {
         try {
-            const storedNotes = localStorage.getItem('studyArchitectNotes');
+            const storedNotes = localStorage.getItem('studySparkNotes');
             if (storedNotes) setSavedNotes(JSON.parse(storedNotes));
+
+            const storedStreakData = localStorage.getItem('studyStreakData');
+            if (storedStreakData) setStudyStreakData(JSON.parse(storedStreakData));
         } catch (e) {
-            console.error("Failed to load notes from localStorage", e);
+            console.error("Failed to load data from localStorage", e);
             setError(t('errorLoadNotes'));
         }
 
@@ -183,7 +205,7 @@ const App: React.FC = () => {
             email: 'alex.doe@example.com',
             picture: `https://api.dicebear.com/8.x/initials/svg?seed=Alex%20Doe`,
         };
-        localStorage.setItem('mindSpaceUser', JSON.stringify(mockUser));
+        localStorage.setItem('studySparkUser', JSON.stringify(mockUser));
         setUser(mockUser);
 
         const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
@@ -193,7 +215,7 @@ const App: React.FC = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('mindSpaceUser');
+        localStorage.removeItem('studySparkUser');
         setUser(null);
         setCurrentView('home');
     };
@@ -202,6 +224,40 @@ const App: React.FC = () => {
         localStorage.setItem('hasSeenWelcome', 'true');
         setShowWelcomeModal(false);
     };
+
+    const updateStudyStreak = useCallback(() => {
+        setStudyStreakData(prevData => {
+            const today = new Date();
+            const todayStr = toYYYYMMDD(today);
+
+            // If already studied today, do nothing.
+            if (prevData.lastStudyDate === todayStr) {
+                return prevData;
+            }
+
+            const yesterdayStr = getYesterdayYYYYMMDD(today);
+            let newCurrentStreak = 1;
+
+            if (prevData.lastStudyDate === yesterdayStr) {
+                newCurrentStreak = prevData.currentStreak + 1;
+            }
+
+            const newLongestStreak = Math.max(prevData.longestStreak, newCurrentStreak);
+            const newStudyDays = prevData.studyDays.includes(todayStr) 
+                ? prevData.studyDays 
+                : [...prevData.studyDays, todayStr];
+            
+            const newData = {
+                currentStreak: newCurrentStreak,
+                longestStreak: newLongestStreak,
+                lastStudyDate: todayStr,
+                studyDays: newStudyDays,
+            };
+
+            localStorage.setItem('studyStreakData', JSON.stringify(newData));
+            return newData;
+        });
+    }, []);
 
     const handleGenerate = async (inputText: string, options: GenerationOptions) => {
         if (!process.env.API_KEY) {
@@ -235,6 +291,7 @@ const App: React.FC = () => {
                 setOriginalContext(result.summary);
             }
             setActiveTab(TABS.find(tab => tab.id === 'notes')!);
+            updateStudyStreak(); // Update streak on successful generation
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : t('errorGeneration'));
@@ -281,7 +338,7 @@ const App: React.FC = () => {
 
         setSavedNotes(prevNotes => {
             const updatedNotes = [newNote, ...prevNotes];
-            localStorage.setItem('studyArchitectNotes', JSON.stringify(updatedNotes));
+            localStorage.setItem('studySparkNotes', JSON.stringify(updatedNotes));
             return updatedNotes;
         });
 
@@ -336,7 +393,7 @@ const App: React.FC = () => {
         if (!noteToDelete) return;
         setSavedNotes(prevNotes => {
             const updatedNotes = prevNotes.filter(n => n.id !== noteToDelete);
-            localStorage.setItem('studyArchitectNotes', JSON.stringify(updatedNotes));
+            localStorage.setItem('studySparkNotes', JSON.stringify(updatedNotes));
             return updatedNotes;
         });
         setNotification(t('notificationNoteDeleted'));
@@ -360,6 +417,7 @@ const App: React.FC = () => {
             case 'notes': return <NotesTab studyData={studyData} onSave={handleSaveNote} onShare={handleShareNote} setNotification={setNotification} onFollowUp={handleFollowUp} chatHistory={notesFollowUpHistory} isChatLoading={isNotesChatLoading} onMindMapChange={handleMindMapChange} highlightedSentences={highlightedSentences} />;
             case 'flashcards': return <FlashcardsTab flashcards={studyData?.flashcards} />;
             case 'quizzes': return <QuizzesTab studyData={studyData} />;
+            case 'studyStreak': return <StudyStreakTab streakData={studyStreakData} />;
             case 'clarityAi': return <ClarityAiTab studyData={studyData} chatHistory={clarityAiHistory} setChatHistory={setClarityAiHistory} />;
             case 'saved': return <SavedTab notes={savedNotes} onLoad={handleLoadNote} onDelete={handleDeleteNote} />;
             default: return <HelpTab />;
@@ -371,7 +429,7 @@ const App: React.FC = () => {
     }
     
     if (currentView === 'home') {
-        return <HomeScreen user={user} theme={theme} setTheme={setTheme} onNavigate={navigateToStudy} />;
+        return <HomeScreen user={user} theme={theme} setTheme={setTheme} onNavigate={navigateToStudy} studyStreakData={studyStreakData} />;
     }
 
     return (

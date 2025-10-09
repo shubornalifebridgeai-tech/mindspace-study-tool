@@ -1,4 +1,5 @@
-import type { MindMapNode } from '../types';
+// FIX: Import PositionedNode from the central types.ts file.
+import type { MindMapNode, PositionedNode } from '../types';
 
 // --- Constants for Layout and Styling ---
 export const NODE_WIDTH = 150;
@@ -35,18 +36,6 @@ type LayoutNode = MindMapNode & {
     children: LayoutNode[];
     parent?: LayoutNode;
 };
-
-export interface PositionedNode extends MindMapNode {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    color: string;
-    textColor: string;
-    isRoot: boolean;
-    level: number;
-}
-
 
 // --- Helper Functions ---
 export const wrapText = (text: string, maxWidth: number): string[] => {
@@ -96,13 +85,16 @@ function buildLayoutTree(
     const height = Math.max(NODE_BASE_HEIGHT, lines.length * 16 + 24);
 
     let colorClass, textColorClass;
-    if (level === 0) {
+    
+    if (node.color && node.textColor) {
+        colorClass = node.color;
+        textColorClass = node.textColor;
+    } else if (level === 0) {
         colorClass = ROOT_COLOR_CLASSES;
         textColorClass = ROOT_TEXT_COLOR_CLASSES;
     } else if (level >= 2) {
-        const parentColorSet = COLORS[parent ? parent.level === 1 ? (parent as any).colorIndex : -1 : -1];
-        colorClass = parentColorSet ? LEVEL_2_PLUS_COLOR_CLASSES : LEVEL_2_PLUS_COLOR_CLASSES; // Fallback
-        textColorClass = parentColorSet ? LEVEL_2_PLUS_TEXT_COLOR_CLASSES : LEVEL_2_PLUS_TEXT_COLOR_CLASSES;
+        colorClass = LEVEL_2_PLUS_COLOR_CLASSES;
+        textColorClass = LEVEL_2_PLUS_TEXT_COLOR_CLASSES;
     } else {
         const colorSet = COLORS[colorIndex % COLORS.length];
         colorClass = colorSet.fill;
@@ -132,10 +124,12 @@ function buildLayoutTree(
 // First pass: a post-order traversal to calculate initial positions and modifiers.
 function firstPass(node: LayoutNode) {
     node.children.forEach(firstPass);
-    if (node.children.length > 0) {
-        // Center parent over children
-        const childrenWidth = node.children[node.children.length - 1].x - node.children[0].x;
-        node.x = node.children[0].x + childrenWidth / 2;
+
+    // If the node has manually set coordinates, don't override them based on children.
+    if (node.x === 0 && node.children.length > 0) {
+         const firstChild = node.children[0];
+        const lastChild = node.children[node.children.length - 1];
+        node.x = (firstChild.x + lastChild.x) / 2;
     }
 
     if (node.parent && node !== node.parent.children[0]) {
@@ -164,11 +158,15 @@ export const createLayout = (rootData: MindMapNode | undefined): PositionedNode[
 
     firstPass(layoutRoot);
     
-    // Center the tree
-    const extents = getTreeExtents(layoutRoot);
-    const shiftX = -extents.min;
-    layoutRoot.x += shiftX;
-    layoutRoot.modifier += shiftX;
+    // Center the tree based on its calculated extents, but only if it's not manually positioned
+    if (layoutRoot.x === 0) {
+        const extents = getTreeExtents(layoutRoot);
+        const shiftX = -extents.min - (extents.max - extents.min) / 2;
+        if (shiftX !== 0) {
+           layoutRoot.x += shiftX;
+           layoutRoot.modifier += shiftX;
+        }
+    }
     
     secondPass(layoutRoot);
 
@@ -177,17 +175,9 @@ export const createLayout = (rootData: MindMapNode | undefined): PositionedNode[
     while (queue.length > 0) {
         const node = queue.shift()!;
         flattenedNodes.push({
-            id: node.id,
-            concept: node.concept,
-            subConcepts: node.subConcepts,
+            ...node, // Includes id, concept, subConcepts, custom styles, and custom positions
             x: node.x,
             y: node.y,
-            width: node.width,
-            height: node.height,
-            color: node.color,
-            textColor: node.textColor,
-            isRoot: node.isRoot,
-            level: node.level,
         });
         queue.push(...node.children);
     }

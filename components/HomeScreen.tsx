@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import type { User, Tab } from '../types';
+import type { User, Tab, StudyStreakData } from '../types';
 import { useLocale } from '../context/LocaleContext';
 import Tooltip from './Tooltip';
 
@@ -9,9 +8,10 @@ interface HomeScreenProps {
     theme: 'light' | 'dark' | 'colorful';
     setTheme: (theme: 'light' | 'dark' | 'colorful') => void;
     onNavigate: (tabId: Tab['id']) => void;
+    studyStreakData: StudyStreakData;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNavigate }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNavigate, studyStreakData }) => {
     const { t } = useLocale();
 
     const { greeting, emoji } = useMemo(() => {
@@ -29,7 +29,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNaviga
     ];
 
     const dailyQuote = useMemo(() => {
-        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 8640000);
         return quotes[dayOfYear % quotes.length];
     }, []);
 
@@ -41,7 +41,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNaviga
             <main className={`w-full max-w-4xl mx-auto text-center rounded-2xl shadow-2xl ${themeClasses} p-6 md:p-10`}>
 
                 {/* Header Section */}
-                <header className="mb-8">
+                <header className="mb-8 animate-fade-in-down">
                     <h1 className="text-4xl md:text-5xl font-extrabold mb-2">
                         {greeting}, <span className={accentTextClass}>{user.name.split(' ')[0]}</span>! {emoji}
                     </h1>
@@ -50,12 +50,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNaviga
 
                 {/* Gamification Stats */}
                 <section className="flex justify-center gap-8 mb-10">
-                    <div className="text-center">
+                    <div className="text-center animate-fade-in-scale-up delay-100">
                         <p className="text-4xl font-bold">🔥</p>
-                        <p className="text-2xl font-bold">12</p>
+                        <p className="text-2xl font-bold">{studyStreakData.currentStreak}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('homeStreak')}</p>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center animate-fade-in-scale-up delay-200">
                         <p className="text-4xl font-bold">✨</p>
                         <p className="text-2xl font-bold">1,450</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('homeXP')}</p>
@@ -64,19 +64,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ user, theme, setTheme, onNaviga
 
                 {/* Main Actions */}
                 <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <button onClick={() => onNavigate('input')} className="glow-on-hover p-6 rounded-xl bg-emerald-600 text-white font-bold text-lg shadow-lg hover:bg-emerald-700">
+                    <button onClick={() => onNavigate('input')} className="glow-on-hover p-6 rounded-xl bg-emerald-600 text-white font-bold text-lg shadow-lg hover:bg-emerald-700 animate-fade-in-up delay-300">
                         {t('homeCTA_new')}
                     </button>
-                    <button onClick={() => onNavigate('flashcards')} className="glow-on-hover p-6 rounded-xl bg-blue-600 text-white font-bold text-lg shadow-lg hover:bg-blue-700">
+                    <button onClick={() => onNavigate('flashcards')} className="glow-on-hover p-6 rounded-xl bg-blue-600 text-white font-bold text-lg shadow-lg hover:bg-blue-700 animate-fade-in-up delay-400">
                         {t('homeCTA_flashcards')}
                     </button>
-                    <button onClick={() => onNavigate('quizzes')} className="glow-on-hover p-6 rounded-xl bg-purple-600 text-white font-bold text-lg shadow-lg hover:bg-purple-700">
-                        {t('homeCTA_quiz')}
+                     <button onClick={() => onNavigate('studyStreak')} className="glow-on-hover p-6 rounded-xl bg-purple-600 text-white font-bold text-lg shadow-lg hover:bg-purple-700 animate-fade-in-up delay-500">
+                        {t('tab_studyStreak')}
                     </button>
                 </section>
 
                 {/* Daily Quote & Theme Selector */}
-                <footer className="flex flex-col md:flex-row justify-between items-center gap-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <footer className="flex flex-col md:flex-row justify-between items-center gap-6 pt-6 border-t border-gray-200 dark:border-gray-700 animate-fade-in-up delay-500">
                     <div className="text-left">
                         <h3 className="font-bold text-gray-500 dark:text-gray-400">{t('homeQuoteTitle')}</h3>
                         <p className="italic text-sm">"{dailyQuote}"</p>
