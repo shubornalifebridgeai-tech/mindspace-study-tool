@@ -1,5 +1,5 @@
 
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+import { GoogleGenerativeAI } from "shubornalifebridgeai-tech/study_spark";
 
 const API_KEY = "AIzaSyB_agA1jJn52FKxd0hUeWvbv9ZGYMloOXI";
 
