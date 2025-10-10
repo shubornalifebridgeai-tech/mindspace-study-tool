@@ -105,7 +105,7 @@
             z-index: 1;
         }
 
-        /* Added animations for HomeScreen */
+        /* Advanced Animations for HomeScreen */
         @keyframes fade-in-down {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -118,6 +118,12 @@
             from { opacity: 0; transform: scale(0.9); }
             to { opacity: 1; transform: scale(1); }
         }
+        @keyframes fall {
+            '0%': { transform: 'translateY(-150%) skewX(0deg)' },
+            '50%': { transform: 'translateY(0%) skewX(-10deg)' },
+            '100%': { transform: 'translateY(150%) skewX(0deg)' },
+        }
+        .animate-fall { animation: fall 3s ease-in-out infinite; }
         .animate-fade-in-down { animation: fade-in-down 0.6s ease-out both; }
         .animate-fade-in-up { animation: fade-in-up 0.6s ease-out both; }
         .animate-fade-in-scale-up { animation: fade-in-scale-up 0.5s ease-out both; }
@@ -146,11 +152,9 @@
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.22.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react-dropzone": "https://aistudiocdn.com/react-dropzone@^14.3.8"
+    "react": "https://esm.sh/react@19",
+    "react-dom": "https://esm.sh/react-dom@19",
+    "@google/generative-ai": "https://esm.sh/@google/generative-ai"
   }
 }
 </script>
@@ -159,31 +163,34 @@
 <body>
     <div id="root"></div>
 
-    <!-- Bootstrap Script: এটা অ্যাড করেছি – React অ্যাপ রেন্ডার করবে -->
     <script type="module">
         import React from 'react';
         import { createRoot } from 'react-dom/client';
-        import { GoogleGenerativeAI } from '@google/genai';  // Gemini ইমপোর্ট (API key পরে অ্যাড করো)
+        import { GoogleGenerativeAI } from '@google/generative-ai';
 
-        // সিম্পল HomeScreen কম্পোনেন্ট (প্রো লেভেলের বেস)
+        // Pro HomeScreen Component (Enhanced with Stats, Actions, Quote, Theme Selector)
         function HomeScreen() {
             const [theme, setTheme] = React.useState('light');
             const [isGenerating, setIsGenerating] = React.useState(false);
             const [summary, setSummary] = React.useState('');
+            const [inputText, setInputText] = React.useState('');
 
-            const toggleTheme = () => {
-                const nextTheme = theme === 'light' ? 'dark' : 'light';
-                document.documentElement.className = nextTheme;
-                setTheme(nextTheme);
+            const toggleTheme = (newTheme) => {
+                document.documentElement.className = newTheme;
+                setTheme(newTheme);
             };
 
             const generateSummary = async () => {
+                if (!inputText.trim()) {
+                    setSummary('Please enter text to summarize!');
+                    return;
+                }
                 setIsGenerating(true);
+                setSummary('Generating summary...');
                 try {
-                    // Gemini API কল (তোমার API key দাও)
-                    const genAI = new GoogleGenerativeAI('YOUR_API_KEY_HERE');  // <-- এখানে API key পেস্ট করো
+                    const genAI = new GoogleGenerativeAI('YOUR_API_KEY_HERE'); // Replace with your key
                     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                    const prompt = 'Write a concise summary of: Learning React with AI tools.';
+                    const prompt = `Write a concise summary of: ${inputText}`;
                     const result = await model.generateContent(prompt);
                     const response = await result.response;
                     setSummary(response.text());
@@ -194,41 +201,122 @@
                 }
             };
 
+            const quotes = [
+                "The beautiful thing about learning is that nobody can take it away from you. - B.B. King",
+                "The only way to do great work is to love what you do. - Steve Jobs",
+                "Live as if you were to die tomorrow. Learn as if you were to live forever. - Mahatma Gandhi"
+            ];
+            const dailyQuote = quotes[new Date().getDay() % quotes.length];
+
+            const stats = [
+                { icon: '🔥', value: 7, label: 'Streak' },
+                { icon: '✨', value: 1450, label: 'XP' }
+            ];
+
+            const actions = [
+                { id: 'summary', label: 'New Summary', color: 'from-emerald-500 to-emerald-600', icon: '📝' },
+                { id: 'flashcards', label: 'Flashcards', color: 'from-blue-500 to-blue-600', icon: '🃏' },
+                { id: 'streak', label: 'Study Streak', color: 'from-purple-500 to-purple-600', icon: '📊' }
+            ];
+
             return (
                 <div className={`min-h-screen p-4 ${theme === 'dark' ? 'dark' : ''}`}>
-                    <header className="flex justify-between items-center mb-8 animate-fade-in-down">
-                        <h1 className="text-3xl font-bold text-accent-primary animate-fade-in-scale-up">StudySpark</h1>
-                        <button onClick={toggleTheme} className="glow-on-hover p-2 rounded-full bg-accent-primary text-white">
-                            {theme === 'light' ? '🌙' : '☀️'}
-                        </button>
+                    <header className="mb-12 relative z-10 animate-fade-in-down">
+                        <h1 className="text-5xl md:text-6xl font-black mb-4 leading-tight">
+                            Hello, Learner! 🌅
+                        </h1>
+                        <p className="text-xl text-gray-600 dark:text-gray-300 font-medium">Unlock new horizons with focused, daily learning.</p>
                     </header>
+
+                    {/* Stats */}
+                    <section className="flex flex-col md:flex-row justify-center gap-8 mb-16 relative z-10">
+                        {stats.map((stat, index) => (
+                            <div key={stat.label} className="text-center group animate-fade-in-up" style={{ animationDelay: `${index * 150}ms` }}>
+                                <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300 animate-fall`}>
+                                    <span className="text-3xl">{stat.icon}</span>
+                                </div>
+                                <p className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-2">{stat.value.toLocaleString()}</p>
+                                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{stat.label}</p>
+                            </div>
+                        ))}
+                    </section>
+
+                    {/* Actions */}
+                    <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 relative z-10">
+                        {actions.map((action, index) => (
+                            <button
+                                key={action.id}
+                                onClick={() => action.id === 'summary' ? generateSummary() : alert(`${action.label} Coming Soon!`)}
+                                className={`${action.color} glow-on-hover p-8 rounded-2xl text-white font-bold text-xl shadow-xl hover:shadow-2xl transform transition-all duration-300 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-3 group relative overflow-hidden`}
+                                style={{ animationDelay: `${index * 100}ms` }}
+                            >
+                                <span className="text-2xl group-hover:scale-110 transition-transform">{action.icon}</span>
+                                <span>{action.label}</span>
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 backdrop-blur-sm" />
+                            </button>
+                        ))}
+                    </section>
+
+                    {/* Input & Summary */}
                     <main className="max-w-2xl mx-auto">
-                        <div className="bg-secondary p-6 rounded-xl shadow-lg themed-bg animate-fade-in-up">
-                            <h2 className="text-xl font-semibold mb-4 text-primary">AI Learning Companion</h2>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg themed-bg animate-fade-in-up">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">AI Learning Companion</h2>
+                            <textarea
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                placeholder="Paste your text here for summary..."
+                                className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 resize-none"
+                                rows={4}
+                            />
                             <button 
                                 onClick={generateSummary}
                                 disabled={isGenerating}
-                                className={`w-full py-3 rounded-lg font-medium glow-on-hover ${isGenerating ? 'generating-animation' : 'bg-accent-primary text-white'}`}
+                                className={`w-full py-3 rounded-lg font-medium glow-on-hover ${isGenerating ? 'generating-animation cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
                             >
                                 {isGenerating ? 'Generating...' : 'Generate Summary'}
                             </button>
                             {summary && (
-                                <div className="mt-4 p-4 bg-bg-tertiary rounded-lg text-text-primary">
+                                <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white">
                                     <h3 className="font-semibold mb-2">Summary:</h3>
                                     <p>{summary}</p>
                                 </div>
                             )}
                         </div>
+
                         {/* PDF Dropzone Placeholder */}
-                        <div className="mt-8 p-6 border-2 border-dashed border-accent-primary rounded-xl text-center animate-fade-in-up delay-200">
-                            <p>Drag & Drop PDF for Analysis (using react-dropzone & pdf.js)</p>
+                        <div className="mt-8 p-6 border-2 border-dashed border-emerald-500 rounded-xl text-center animate-fade-in-up delay-200">
+                            <p className="text-gray-600 dark:text-gray-300">Drag & Drop PDF for Analysis (using react-dropzone & pdf.js)</p>
                         </div>
                     </main>
+
+                    {/* Quote & Theme Selector */}
+                    <footer className="flex flex-col lg:flex-row justify-between items-center gap-8 pt-8 border-t border-gray-200/50 dark:border-gray-700/50 relative z-10 animate-fade-in-up delay-300">
+                        <div className="text-left flex-1">
+                            <h3 className="font-semibold text-gray-600 dark:text-gray-300 mb-2">Daily Quote</h3>
+                            <blockquote className="italic text-lg font-medium text-gray-700 dark:text-gray-200 border-l-4 border-emerald-400 pl-4">
+                                "{dailyQuote}"
+                            </blockquote>
+                        </div>
+                        <div className="flex items-center gap-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-700/50">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:block">Theme</span>
+                            {[
+                                { key: 'light', bg: 'bg-white border-gray-300', active: 'border-blue-500' },
+                                { key: 'dark', bg: 'bg-gray-800 border-gray-600', active: 'border-blue-500' },
+                                { key: 'colorful', bg: 'bg-gradient-to-r from-indigo-500 to-purple-500 border-transparent', active: 'border-white' }
+                            ].map((th) => (
+                                <button
+                                    key={th.key}
+                                    onClick={() => toggleTheme(th.key)}
+                                    className={`w-10 h-10 rounded-full ${th.bg} ${theme === th.key ? th.active : ''} shadow-md hover:shadow-lg transition-all duration-200 flex-shrink-0`}
+                                />
+                            ))}
+                        </div>
+                    </footer>
                 </div>
             );
         }
 
-        // Root তৈরি করে রেন্ডার
+        // Render
         const root = createRoot(document.getElementById('root'));
         root.render(<HomeScreen />);
     </script>
