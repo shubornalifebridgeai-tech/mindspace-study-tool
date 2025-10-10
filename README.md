@@ -1,41 +1,49 @@
+ <script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-import { GoogleGenerativeAI } from "shubornalifebridgeai-tech/study_spark";
+    const API_KEY = "AIzaSyCnwYwvSDGIF4Q9Hcc5W3PF6hiqAuuewsw";
+    const genAI = new GoogleGenerativeAI(API_KEY);
 
-const API_KEY = "AIzaSyB_agA1jJn52FKxd0hUeWvbv9ZGYMloOXI";
+    const button = document.getElementById("button");
+    const input = document.getElementById("input");
+    const output = document.getElementById("output");
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+    function toggleTheme() {
+        const html = document.documentElement;
+        html.classList.toggle('light');
+        html.classList.toggle('dark');
+    }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('generateBtn');
-    const input = document.getElementById('textInput');
-    const output = document.getElementById('output');
-
-    button.addEventListener('click', async () => {
-        const text = input.value.trim();
-        if (!text) {
-            output.innerHTML = '<p class="error">Provide text input!</p>';
+    async function generateSummary() {
+        const textInput = input.value.trim();
+        if (textInput === "") {
+            output.innerHTML = '<p class="text-red-500 font-semibold">Provide text input!</p>';
             return;
         }
 
         button.disabled = true;
-        button.textContent = 'Generating...';
-        output.innerHTML = '<p class="loading">Creating summary... Please wait.</p>';
+        button.textContent = "Generating...";
+        button.classList.add('generating-animation');
+        output.innerHTML = '<p class="text-blue-500">Creating summary... Please wait.</p>';
 
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const prompt = `Write a concise, well-written summary of the following text (in one paragraph): ${text}`;
-            
+            const prompt = `Write a concise, well-written summary of the following text: ${textInput}`;
             const result = await model.generateContent(prompt);
             const response = await result.response;
-            const summary = response.text();
+            const summary = await response.text();
 
-            output.innerHTML = `<h3>Summary:</h3><p>${summary}</p>`;
-        } catch (error) {
-            console.error("Error:", error);
-            output.innerHTML = `<p class="error">Error occurred: ${error.message}. Check API key or internet.</p>`;
+            output.innerHTML = `<h3 class="font-semibold mb-2 text-accent-primary">Summary:</h3><p class="whitespace-pre-wrap">${summary}</p>`;
+        } catch (err) {
+            output.innerHTML = `<p class="text-red-500 font-semibold">Error occurred: ${err.message}</p>`;
         } finally {
             button.disabled = false;
-            button.textContent = 'Generate Summary';
+            button.textContent = "Generate Summary";
+            button.classList.remove('generating-animation');
         }
+    }
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) generateSummary();
     });
-});
+</script>
