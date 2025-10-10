@@ -1,7 +1,19 @@
-{
-  "name": "StudySpark",
+ {
+  "name": "studyspark",
+  "version": "1.0.0",
+  "private": true,
   "description": "An AI-powered learning tool that transforms your study materials into concise summaries, structured mind maps, and interactive flashcards to enhance your learning experience.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0"
+  }
 }
